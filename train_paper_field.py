@@ -31,6 +31,8 @@ parser.add_argument('--cuda', type=int, default=0,
                     help='Avaiable GPU ID')
 parser.add_argument('--domain', type=str, default='_NN',
                     help='CS, Medicion or All: _CS or _Med or (empty)')         
+parser.add_argument('--level', type=int, default=2,
+                    help='paper field level: 1, 2, etc')
 '''
    Model arguments 
 '''
@@ -78,7 +80,11 @@ parser.add_argument('--test', action="store_true", default=False,
 
 args = parser.parse_args()
 today = datetime.now()
-logger = get_logger(filename='out/log_{}_{}.log'.format(args.task_name + args.model_name, today.strftime("%Y-%m-%d-%H:%M")), level=logging.DEBUG)
+logger = get_logger(filename='out/log_{}_{}.log'.format(args.task_name + str(args.level) + args.model_name, today.strftime("%Y-%m-%d-%H:%M")), level=logging.DEBUG)
+
+rev_PF_level = 'rev_PF_in_L' + str(args.level)
+PF_in_level = 'PF_in_L' + str(args.level)
+
 # logger = logging.get_logger()
 
 logger.info(args)
@@ -89,9 +95,9 @@ else:
     device = torch.device("cpu")
     
 if args.model_name == 'default':
-    save_path = os.path.join(args.model_dir, args.task_name + '_' + args.conv_name+ '_'+ today.strftime("%Y-%m-%d-%H:%M"))
+    save_path = os.path.join(args.model_dir, args.task_name + str(args.level) +  '_' + args.conv_name+ '_'+ today.strftime("%Y-%m-%d-%H:%M"))
 else:
-    save_path = os.path.join(args.model_dir, args.task_name + '_' + args.model_name + '_'+ today.strftime("%Y-%m-%d-%H:%M"))
+    save_path = os.path.join(args.model_dir, args.task_name + str(args.level) +  '_' + args.model_name + '_'+ today.strftime("%Y-%m-%d-%H:%M"))
     
     
 
@@ -109,7 +115,7 @@ types = graph.get_types()
 '''
     cand_list stores all the L2 fields, which is the classification domain.
 '''
-cand_list = list(graph.edge_list['field']['paper']['PF_in_L2'].keys())
+cand_list = list(graph.edge_list['field']['paper'][PF_in_level].keys())
 '''
 Use KL Divergence here, since each paper can be associated with multiple fields.
 Thus this task is a multi-label classification.
@@ -145,16 +151,16 @@ def node_classification_sample(seed, pairs, time_range):
         (3) Mask out the edge between the output target nodes (paper) with output source nodes (L2 field)
     '''
     masked_edge_list = []
-    for i in edge_list['paper']['field']['rev_PF_in_L2']:
+    for i in edge_list['paper']['field'][rev_PF_level]:
         if i[0] >= args.batch_size:
             masked_edge_list += [i]
-    edge_list['paper']['field']['rev_PF_in_L2'] = masked_edge_list
+    edge_list['paper']['field'][rev_PF_level] = masked_edge_list
 
     masked_edge_list = []
-    for i in edge_list['field']['paper']['PF_in_L2']:
+    for i in edge_list['field']['paper'][PF_in_level]:
         if i[1] >= args.batch_size:
             masked_edge_list += [i]
-    edge_list['field']['paper']['PF_in_L2'] = masked_edge_list
+    edge_list['field']['paper'][PF_in_level] = masked_edge_list
     
     '''
         (4) Transform the subgraph into torch Tensor (edge_index is in format of pytorch_geometric)
@@ -207,9 +213,9 @@ test_pairs  = {}
 '''
     Prepare all the souce nodes (L2 field) associated with each target node (paper) as dict
 '''
-for target_id in graph.edge_list['paper']['field']['rev_PF_in_L2']:
-    for source_id in graph.edge_list['paper']['field']['rev_PF_in_L2'][target_id]:
-        _time = graph.edge_list['paper']['field']['rev_PF_in_L2'][target_id][source_id]
+for target_id in graph.edge_list['paper']['field'][rev_PF_level]:
+    for source_id in graph.edge_list['paper']['field'][rev_PF_level][target_id]:
+        _time = graph.edge_list['paper']['field'][rev_PF_level][target_id][source_id]
         if _time in train_range:
             if target_id not in train_pairs:
                 train_pairs[target_id] = [[], _time]
