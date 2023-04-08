@@ -1,0 +1,2 @@
+python3 /home/h/huongntm/repo/HGT/train_paper_field.py --data_dir /home/h/huongntm/repo/HGT/data \
+    --model_dir /home/h/huongntm/repo/HGT/save_model --conv_name hgt --model_name ppf_nsg --domain '_CS'  --n_epoch 20 --no_msg_rela  
